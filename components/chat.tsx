@@ -1,8 +1,8 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import * as React from 'react';
 
 interface Doc {
   pageContent?: string;
@@ -20,49 +20,96 @@ interface IMessage {
 }
 
 const ChatComponent: React.FC = () => {
-  const [message, setMessage] = React.useState<string>('');
-  const [messages, setMessages] = React.useState<IMessage[]>([]);
-  const [loading, setLoading] = React.useState<boolean>(false);
-  const [error, setError] = React.useState<string | null>(null);
-  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+  const [message, setMessage] = useState<string>('');
+  const [messages, setMessages] = useState<IMessage[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [streamingContent, setStreamingContent] = useState<string>('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     scrollToBottom();
-  }, [messages, loading]);
+  }, [messages, loading, streamingContent]);
 
   const handleSendChatMessage = async () => {
     if (!message.trim()) return;
 
     setLoading(true);
     setError(null);
+    setStreamingContent('');
     const userMessage: IMessage = { role: 'user', content: message };
     setMessages((prev) => [...prev, userMessage]);
+    const currentMessage = message;
     setMessage('');
 
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/chat?message=${message}`
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/chat?message=${encodeURIComponent(currentMessage)}`,
+        {
+          method: 'GET',
+        }
       );
-      if (!res.ok) {
-        throw new Error(`API request failed with status ${res.status}`);
+
+      if (!response.ok) {
+        throw new Error(`API request failed with status ${response.status}`);
       }
-      const data = await res.json();
-      const assistantMessage: IMessage = {
-        role: 'assistant',
-        content: data?.message,
-        documents: data?.docs,
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No response body');
+      }
+
+      let fullContent = '';
+      let documents: Doc[] = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = new TextDecoder().decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') {
+              // Streaming complete
+              const assistantMessage: IMessage = {
+                role: 'assistant',
+                content: fullContent,
+                documents: documents,
+              };
+              setMessages((prev) => [...prev, assistantMessage]);
+              setStreamingContent('');
+              return;
+            }
+
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.content) {
+                fullContent += parsed.content;
+                setStreamingContent(fullContent);
+              }
+              if (parsed.documents) {
+                documents = parsed.documents;
+              }
+            } catch (e) {
+              // Ignore parsing errors for incomplete chunks
+            }
+          }
+        }
+      }
     } catch (e: any) {
       setError(e.message);
-      // remove the user message if the call fails
+      // Remove the user message if the call fails
       setMessages((prev) => prev.slice(0, prev.length - 1));
     } finally {
       setLoading(false);
+      setStreamingContent('');
     }
   };
 
@@ -97,7 +144,7 @@ const ChatComponent: React.FC = () => {
                       className="text-xs p-2 bg-slate-300 rounded-md mt-1"
                     >
                       <p className="italic">
-                        "{doc.pageContent?.slice(0, 150)}..."
+                        &quot;{doc.pageContent?.slice(0, 150)}...&quot;
                       </p>
                       <p className="text-right mt-1 font-medium">
                         Page: {doc.metadata?.loc?.pageNumber}
@@ -109,10 +156,18 @@ const ChatComponent: React.FC = () => {
             </div>
           </div>
         ))}
-        {loading && (
+        {streamingContent && (
+          <div className="flex justify-start">
+            <div className="bg-gray-200 text-gray-900 p-4 rounded-lg max-w-2xl">
+              <p>{streamingContent}</p>
+              <span className="animate-pulse">▋</span>
+            </div>
+          </div>
+        )}
+        {loading && !streamingContent && (
           <div className="flex justify-start">
             <div className="bg-gray-200 text-gray-900 p-4 rounded-lg">
-              Typing...
+              Thinking...
             </div>
           </div>
         )}
