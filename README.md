@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PDF Chatbot with RAG Frontend
 
-## Getting Started
+This is the Next.js frontend for the PDF chat RAG application. It provides a modern, streaming chat UI and connects to the backend for PDF upload and chat.
 
-First, run the development server:
+**Backend repo:** [pdf-chatbot-backend](https://github.com/bablukpik/pdf-chatbot-backend)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Features
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- Upload PDF files
+- Streaming chat interface (like ChatGPT)
+- Shows AI answers and sources from your PDFs
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. **Install dependencies:**
+   ```sh
+   npm install
+   ```
+2. **Copy and configure environment variables:**
+   ```sh
+   cp .env.local.example .env.local
+   # Edit .env.local and set NEXT_PUBLIC_API_URL to your backend URL
+   ```
+3. **Start the frontend:**
+   ```sh
+   npm run dev
+   ```
 
-## Learn More
+## Environment Variables
 
-To learn more about Next.js, take a look at the following resources:
+See `.env.local.example` for all required variables:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `NEXT_PUBLIC_API_URL`: The URL of your backend (e.g., http://localhost:8000)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Usage
 
-## Deploy on Vercel
+- Upload a PDF using the left panel.
+- Ask questions in the chat interface on the right.
+- The chat UI streams the AI's response in real-time using a custom streaming implementation (Server-Sent Events/SSE).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Streaming Chat
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- The chat UI uses a custom fetch and streaming logic to connect to the backend `/chat` endpoint and display streaming responses as they arrive.
+
+## License
+
+MIT
