@@ -58,6 +58,7 @@ const ChatComponent: React.FC = () => {
         throw new Error(`API request failed with status ${response.status}`);
       }
 
+      // Streaming response
       const reader = response.body?.getReader();
       if (!reader) {
         throw new Error('No response body');
@@ -67,9 +68,11 @@ const ChatComponent: React.FC = () => {
       let documents: Doc[] = [];
 
       while (true) {
+        // Read the response chunk by chunk
         const { done, value } = await reader.read();
         if (done) break;
 
+        // Convert bytes to text
         const chunk = new TextDecoder().decode(value);
         const lines = chunk.split('\n');
 
@@ -81,10 +84,10 @@ const ChatComponent: React.FC = () => {
               const assistantMessage: IMessage = {
                 role: 'assistant',
                 content: fullContent,
-                documents: documents,
+                documents,
               };
               setMessages((prev) => [...prev, assistantMessage]);
-              setStreamingContent('');
+              // setStreamingContent('');
               return;
             }
 
@@ -97,8 +100,9 @@ const ChatComponent: React.FC = () => {
               if (parsed.documents) {
                 documents = parsed.documents;
               }
-            } catch (e) {
+            } catch (e: any) {
               // Ignore parsing errors for incomplete chunks
+              console.error(`Error: ${e.message}`)
             }
           }
         }
@@ -135,24 +139,6 @@ const ChatComponent: React.FC = () => {
                 }`}
             >
               <p>{msg.content}</p>
-              {msg.documents && msg.documents.length > 0 && (
-                <div className="mt-2 border-t border-gray-400 pt-2">
-                  <h4 className="font-semibold text-xs mb-1">Sources:</h4>
-                  {msg.documents.map((doc, i) => (
-                    <div
-                      key={i}
-                      className="text-xs p-2 bg-slate-300 rounded-md mt-1"
-                    >
-                      <p className="italic">
-                        &quot;{doc.pageContent?.slice(0, 150)}...&quot;
-                      </p>
-                      <p className="text-right mt-1 font-medium">
-                        Page: {doc.metadata?.loc?.pageNumber}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         ))}
