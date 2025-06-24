@@ -13,7 +13,7 @@ interface Doc {
     source?: string;
   };
 }
-interface IMessage {
+interface Message {
   role: 'assistant' | 'user';
   content?: string;
   documents?: Doc[];
@@ -21,7 +21,7 @@ interface IMessage {
 
 const ChatComponent: React.FC = () => {
   const [message, setMessage] = useState<string>('');
-  const [messages, setMessages] = useState<IMessage[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [streamingContent, setStreamingContent] = useState<string>('');
@@ -33,6 +33,7 @@ const ChatComponent: React.FC = () => {
 
   useEffect(() => {
     scrollToBottom();
+    console.log({streamingContent});
   }, [messages, loading, streamingContent]);
 
   const handleSendChatMessage = async () => {
@@ -41,7 +42,7 @@ const ChatComponent: React.FC = () => {
     setLoading(true);
     setError(null);
     setStreamingContent('');
-    const userMessage: IMessage = { role: 'user', content: message };
+    const userMessage: Message = { role: 'user', content: message };
     setMessages((prev) => [...prev, userMessage]);
     const currentMessage = message;
     setMessage('');
@@ -77,38 +78,44 @@ const ChatComponent: React.FC = () => {
         const lines = chunk.split('\n');
 
         for (const line of lines) {
+
           if (line.startsWith('data: ')) {
             const data = line.slice(6);
-            if (data === '[DONE]') {
-              // Streaming complete
-              const assistantMessage: IMessage = {
-                role: 'assistant',
-                content: fullContent,
-                documents,
-              };
-              setMessages((prev) => [...prev, assistantMessage]);
-              // setStreamingContent('');
-              return;
-            }
 
             try {
               const parsed = JSON.parse(data);
-              if (parsed.content) {
+
+              // Handle different types of streaming data
+              if (parsed.type === 'stream' && parsed.content) {
                 fullContent += parsed.content;
                 setStreamingContent(fullContent);
-              }
-              if (parsed.documents) {
+              } else if (parsed.type === 'docs' && parsed.documents) {
                 documents = parsed.documents;
+              } else if (parsed.type === 'done') {
+                // Streaming complete
+                const assistantMessage: Message = {
+                  role: 'assistant',
+                  content: fullContent,
+                  documents,
+                };
+                setMessages((prev) => [...prev, assistantMessage]);
+                setStreamingContent('');
+                return;
+              } else if (parsed.type === 'error' && parsed.error) {
+                throw new Error(parsed.error);
               }
-            } catch (e: any) {
+            } catch (e: unknown) {
               // Ignore parsing errors for incomplete chunks
-              console.error(`Error: ${e.message}`)
+              if (e instanceof Error) {
+                console.error(`Error: ${e.message}`);
+              }
             }
           }
         }
       }
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+      setError(errorMessage);
       // Remove the user message if the call fails
       setMessages((prev) => prev.slice(0, prev.length - 1));
     } finally {
