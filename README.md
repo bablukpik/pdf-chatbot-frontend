@@ -6,9 +6,16 @@ This is the Next.js frontend for the PDF chat RAG application. It provides a mod
 
 ## Features
 
+- Next.js 14 with App Router
+- TypeScript
+- Tailwind CSS
+- shadcn/ui components
+- Lucide React icons
 - Upload PDF files
 - Streaming chat interface (like ChatGPT)
 - Shows AI answers and sources from your PDFs
+- Copy messages functionality
+- Request cancellation support
 
 ## Setup
 
@@ -41,6 +48,13 @@ See `.env.local.example` for all required variables:
 ## Streaming Chat
 
 - The chat UI uses a custom fetch and streaming logic to connect to the backend `/chat` endpoint and display streaming responses as they arrive.
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
 
 ## License
 
