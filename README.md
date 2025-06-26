@@ -59,3 +59,10 @@ See `.env.local.example` for all required variables:
 ## License
 
 MIT
+
+## Contact
+
+If you'd like to discuss this project or collaborate:
+
+- Email: bablukpik@gmail.com
+- LinkedIn: https://www.linkedin.com/in/bablukpik/

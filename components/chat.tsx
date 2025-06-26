@@ -6,8 +6,22 @@ import { useEffect, useRef, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { AlertCircle, Copy, FileText, Check } from "lucide-react"
+import { AlertCircle, Copy, FileText, Check, Settings, ChevronUp, ChevronDown } from "lucide-react"
 import { toast } from "sonner"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 
 interface Doc {
   pageContent?: string
@@ -34,6 +48,22 @@ interface StreamingState {
   messageId: string
 }
 
+interface ModelInfo {
+  model: string
+  modelName: string
+  provider: string
+  cost: string
+}
+
+interface AvailableModels {
+  [key: string]: {
+    name: string
+    provider: string
+    cost: string
+    description: string
+  }
+}
+
 const ChatComponent: React.FC = () => {
   const [input, setInput] = useState<string>("")
   const [messages, setMessages] = useState<Message[]>([])
@@ -45,6 +75,10 @@ const ChatComponent: React.FC = () => {
     messageId: "",
   })
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
+  const [selectedModel, setSelectedModel] = useState<string>("deepseek/deepseek-r1-0528:free")
+  const [availableModels, setAvailableModels] = useState<AvailableModels>({})
+  const [currentModelInfo, setCurrentModelInfo] = useState<ModelInfo | null>(null)
+  const [openCollapsibles, setOpenCollapsibles] = useState<Record<string, boolean>>({})
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -118,6 +152,7 @@ const ChatComponent: React.FC = () => {
 
     setLoading(true)
     setError(null)
+    setCurrentModelInfo(null)
 
     const userMessage: Message = {
       id: generateMessageId(),
@@ -144,6 +179,7 @@ const ChatComponent: React.FC = () => {
             role: msg.role,
             content: msg.content,
           })),
+          model: selectedModel,
         }),
         signal: abortControllerRef.current.signal,
       })
@@ -209,6 +245,10 @@ const ChatComponent: React.FC = () => {
                   if (parsed.documents) {
                     documents = parsed.documents
                   }
+                  break
+
+                case "model_info":
+                  setCurrentModelInfo(parsed)
                   break
 
                 case "done":
@@ -298,12 +338,68 @@ const ChatComponent: React.FC = () => {
     saveMessages(messages)
   }, [messages, saveMessages])
 
+  // Load available models on component mount
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/models`)
+        if (response.ok) {
+          const data = await response.json()
+          setAvailableModels(data.models)
+          setSelectedModel(data.default)
+        }
+      } catch (err) {
+        console.error("Failed to load models:", err)
+      }
+    }
+    loadModels()
+  }, [])
+
   return (
     <div className="flex flex-col h-screen max-w-4xl mx-auto p-4">
-      <div className="mb-4">
-        <h1 className="text-2xl font-bold text-gray-900">PDF Chat Assistant</h1>
-        <p className="text-gray-600">Ask questions about your PDF documents</p>
+      <div className="mb-4 flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">PDF Chat Assistant</h1>
+          <p className="text-gray-600">Ask questions about your PDF documents</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Settings className="w-4 h-4 text-gray-500" />
+          <Select value={selectedModel} onValueChange={setSelectedModel} disabled={loading}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Select model" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(availableModels).map(([modelId, modelInfo]) => (
+                <SelectItem key={modelId} value={modelId}>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{modelInfo.name}</span>
+                    <span className="text-xs text-gray-500">
+                      {modelInfo.provider} • {modelInfo.cost}
+                    </span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
+
+      {/* Model info display */}
+      {currentModelInfo && (
+        <Card className="mb-4 p-3 bg-blue-50 border-blue-200">
+          <div className="flex items-center gap-2 text-blue-700">
+            <span className="text-sm font-medium">
+              Using: {currentModelInfo.modelName} ({currentModelInfo.provider})
+            </span>
+            <span className={`text-xs px-2 py-1 rounded ${currentModelInfo.cost === 'free'
+              ? 'bg-green-100 text-green-700'
+              : 'bg-yellow-100 text-yellow-700'
+              }`}>
+              {currentModelInfo.cost}
+            </span>
+          </div>
+        </Card>
+      )}
 
       {/* Messages container */}
       <div className="flex-grow mb-4 overflow-y-auto pr-2 space-y-4">
@@ -321,7 +417,11 @@ const ChatComponent: React.FC = () => {
                 }`}
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="whitespace-pre-wrap break-words flex-1">{msg.content}</p>
+                <div className="prose prose-sm max-w-none text-current">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {msg.content}
+                  </ReactMarkdown>
+                </div>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -343,21 +443,45 @@ const ChatComponent: React.FC = () => {
                 {msg.timestamp.toLocaleTimeString()}
               </div>
 
-              {/* Show documents if available */}
+              {/* Collapsible documents section */}
               {msg.documents && msg.documents.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-gray-300">
-                  <p className="text-xs text-gray-600 mb-1">Sources:</p>
-                  <div className="space-y-1">
-                    {msg.documents.slice(0, 3).map((doc, idx) => (
-                      <div key={idx} className="text-xs bg-gray-50 p-2 rounded">
-                        {doc.metadata?.source && (
-                          <div className="font-medium">Page {doc.metadata.loc?.pageNumber || "Unknown"}</div>
-                        )}
-                        <div className="text-gray-600 truncate">{doc.pageContent?.substring(0, 100)}...</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <Collapsible
+                  open={openCollapsibles[msg.id] || false}
+                  onOpenChange={(isOpen: boolean) =>
+                    setOpenCollapsibles((prev) => ({ ...prev, [msg.id]: isOpen }))
+                  }
+                  className="mt-2 pt-2 border-t border-gray-300"
+                >
+                  <CollapsibleTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-between items-center text-xs p-1 h-auto"
+                    >
+                      <span>Sources ({msg.documents.length})</span>
+                      {openCollapsibles[msg.id] ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
+                    <div className="space-y-1 mt-2">
+                      {msg.documents.map((doc, idx) => (
+                        <div key={idx} className="text-xs bg-gray-50 p-2 rounded">
+                          {doc.metadata?.source && (
+                            <div className="font-medium">
+                              Page {doc.metadata.loc?.pageNumber || "Unknown"}
+                            </div>
+                          )}
+                          <div className="text-gray-600 truncate">
+                            {doc.pageContent?.substring(0, 100)}...
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
               )}
             </div>
           </div>
@@ -367,10 +491,11 @@ const ChatComponent: React.FC = () => {
         {streamingState.isActive && (
           <div className="flex justify-start">
             <div className="max-w-2xl bg-gray-100 text-gray-900 border rounded-lg px-4 py-3">
-              <p className="whitespace-pre-wrap break-words">
-                {streamingState.content}
-                <span className="animate-pulse">▋</span>
-              </p>
+              <div className="prose prose-sm max-w-none">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {`${streamingState.content}▋`}
+                </ReactMarkdown>
+              </div>
             </div>
           </div>
         )}
