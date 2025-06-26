@@ -20,6 +20,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 
 interface Doc {
   pageContent?: string
@@ -415,7 +417,11 @@ const ChatComponent: React.FC = () => {
                 }`}
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="whitespace-pre-wrap break-words flex-1">{msg.content}</p>
+                <div className="prose prose-sm max-w-none text-current">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {msg.content}
+                  </ReactMarkdown>
+                </div>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -485,10 +491,11 @@ const ChatComponent: React.FC = () => {
         {streamingState.isActive && (
           <div className="flex justify-start">
             <div className="max-w-2xl bg-gray-100 text-gray-900 border rounded-lg px-4 py-3">
-              <p className="whitespace-pre-wrap break-words">
-                {streamingState.content}
-                <span className="animate-pulse">▋</span>
-              </p>
+              <div className="prose prose-sm max-w-none">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {`${streamingState.content}▋`}
+                </ReactMarkdown>
+              </div>
             </div>
           </div>
         )}
