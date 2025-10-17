@@ -21,7 +21,7 @@ This is the Next.js frontend for the PDF chat RAG application. It provides a mod
 
 1. **Install dependencies:**
    ```sh
-   npm install
+   pnpm install
    ```
 2. **Copy and configure environment variables:**
    ```sh
@@ -30,7 +30,7 @@ This is the Next.js frontend for the PDF chat RAG application. It provides a mod
    ```
 3. **Start the frontend:**
    ```sh
-   npm run dev
+   pnpm dev
    ```
 
 ## Environment Variables
