@@ -20,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={inter.className} suppressHydrationWarning>
+      <body className={`${inter.className}`} suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -32,8 +32,12 @@ export default function RootLayout({
             duration={1000}
             closeButton={true}
           />
-          <Header />
-          {children}
+          <div className="min-h-screen grid grid-rows-[auto_1fr]">
+            <Header />
+            <main className="overflow-hidden">
+              {children}
+            </main>
+          </div>
         </ThemeProvider>
       </body>
     </html>

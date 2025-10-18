@@ -49,6 +49,37 @@ See `.env.local.example` for all required variables:
 
 - The chat UI uses a custom fetch and streaming logic to connect to the backend `/chat` endpoint and display streaming responses as they arrive.
 
+## CSS Grid Layout
+
+### 1. **Layout.tsx** - Using CSS Grid:
+
+```tsx
+<div className="min-h-screen grid grid-rows-[auto_1fr]">
+  <Header />
+  <main className="overflow-hidden">{children}</main>
+</div>
+```
+
+### 2. **Chat.tsx & Upload.tsx** - Simple height classes:
+
+```tsx
+<div className="h-full bg-gray-50">
+```
+
+**How it works:**
+
+1. **`grid-rows-[auto_1fr]`** - Header takes only needed space (`auto`), main takes remaining space (`1fr`)
+2. **`h-full`** - Pages naturally fill the available space from their parent
+3. **No scrollbars** - Grid handles height distribution perfectly
+4. **More maintainable** - No magic numbers or calculations
+
+**How to layout:**
+
+- **Grid container**: `min-h-screen` ensures full viewport height
+- **Header row**: `auto` size - takes only the space it needs
+- **Main row**: `1fr` - takes all remaining space
+- **Child pages**: `h-full` - fill the available space from the grid
+
 ## Contributing
 
 1. Fork the repository

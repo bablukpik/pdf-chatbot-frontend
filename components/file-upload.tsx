@@ -45,7 +45,7 @@ const FileUploadComponent: React.FC = () => {
             // Reset after a few seconds
             setTimeout(() => {
               setStatus('idle');
-              setStatusMessage('Upload PDF File');
+              setStatusMessage('');
             }, 3000);
           }
         }
@@ -69,13 +69,19 @@ const FileUploadComponent: React.FC = () => {
 
   return (
     <div
-      className={`bg-slate-900 text-white shadow-2xl flex justify-center items-center p-4 rounded-lg border-2 transition-all ${getStatusColor()}`}
+      className={`bg-slate-900 text-white shadow-2xl flex justify-center items-center p-4 rounded-lg border-2 transition-all ${getStatusColor()} ${status !== 'uploading' ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+      onClick={status === 'uploading' ? undefined : handleFileUploadButtonClick}
+      role="button"
+      tabIndex={status === 'uploading' ? -1 : 0}
+      aria-disabled={status === 'uploading'}
+      onKeyDown={(e) => {
+        if (status !== 'uploading' && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault()
+          handleFileUploadButtonClick()
+        }
+      }}
     >
-      <div
-        onClick={status === 'uploading' ? undefined : handleFileUploadButtonClick}
-        className={`flex justify-center items-center flex-col ${status !== 'uploading' ? 'cursor-pointer' : 'cursor-not-allowed'
-          }`}
-      >
+      <div className="flex justify-center items-center flex-col">
         <h3>{statusMessage}</h3>
         <Upload />
       </div>
